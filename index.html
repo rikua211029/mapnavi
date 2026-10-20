@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<title>TrainNav — 運転支援</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+:root{color-scheme:light;--bg:#f5f5f7;--card:#fff;--text:#1d1d1f;--sub:#6e6e73;--line:#d2d2d7;--blue:#007aff;--green:#248a3d;--orange:#c93400;--radius:16px}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}
+body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font:inherit}button{border:0;border-radius:12px;padding:12px 14px;background:#e8e8ed;color:var(--text);font-weight:600;cursor:pointer;min-height:44px}button.primary{background:var(--blue);color:white}button.danger{background:#ffebe9;color:#b42318}button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{width:100%;border:1px solid var(--line);background:#fff;border-radius:11px;padding:12px;color:var(--text);min-height:44px}label{display:block;font-size:13px;color:var(--sub);font-weight:600;margin:0 0 6px}
+header{position:sticky;top:0;z-index:1000;background:rgba(245,245,247,.94);backdrop-filter:blur(18px);border-bottom:1px solid #dddde2;padding:calc(10px + env(safe-area-inset-top)) 16px 10px}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{font-size:20px;font-weight:750;letter-spacing:-.5px}.brand span{color:var(--blue)}.status{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}.dot{width:8px;height:8px;border-radius:50%;background:#8e8e93;display:inline-block}.dot.live{background:var(--green)}
+main{max-width:760px;margin:0 auto;padding:14px 12px 20px}.panel{display:none}.panel.active{display:block}.card{background:var(--card);border:1px solid rgba(0,0,0,.04);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.025)}
+h1{font-size:24px;letter-spacing:-.6px;margin:4px 0 5px}h2{font-size:17px;margin:0 0 14px;letter-spacing:-.2px}.sub{color:var(--sub);font-size:13px;line-height:1.45}.row{display:flex;gap:8px;align-items:center}.row>*{min-width:0}.row .grow{flex:1}.stack{display:grid;gap:12px}.field{min-width:0}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#map{height:42vh;min-height:270px;max-height:460px;border-radius:14px;overflow:hidden;background:#e6e6e6;z-index:1}.map-wrap{position:relative}.map-actions{position:absolute;z-index:500;top:10px;right:10px;display:grid;gap:7px}.map-actions button{background:#fff;box-shadow:0 2px 8px #0002;padding:9px 12px;min-height:40px}
+.kpi{background:#f5f5f7;border-radius:12px;padding:12px}.kpi .value{font-size:22px;font-weight:750;letter-spacing:-.5px;font-variant-numeric:tabular-nums}.kpi .label{font-size:11px;color:var(--sub);margin-top:4px}
+.list{display:grid;gap:8px}.item{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px}.item .itembody{flex:1;min-width:0}.item strong{display:block;font-size:14px;overflow-wrap:anywhere}.item small{display:block;color:var(--sub);font-size:12px;margin-top:3px}.item button{padding:8px 10px;min-height:38px}.badge{font-size:11px;padding:4px 7px;border-radius:7px;background:#e8f2ff;color:#075fbd;white-space:nowrap}
+.tabs{position:fixed;bottom:0;left:0;right:0;z-index:1100;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:rgba(250,250,252,.94);backdrop-filter:blur(20px);border-top:1px solid #dddde2}
+.tab{background:transparent;color:var(--sub);padding:8px 4px;min-height:54px;font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.tab .ico{font-size:19px;line-height:20px}.tab.active{color:var(--blue);background:#e5f1ff}
+.notice{border-radius:12px;padding:12px 14px;background:#e8f2ff;color:#075fbd;font-size:13px;line-height:1.45}.notice.warn{background:#fff3d6;color:#855300}.notice.error{background:#ffebe9;color:#b42318}
+.banner{display:none;background:#007aff;color:white;border-radius:14px;padding:16px;margin-bottom:12px}.banner.show{display:block}.banner .big{font-size:18px;font-weight:750}.banner .small{font-size:13px;margin-top:4px;opacity:.9}
+.range{width:100%;padding:0;min-height:auto;accent-color:var(--blue)}.empty{text-align:center;color:var(--sub);padding:20px 10px;font-size:13px}.divider{height:1px;background:#eeeef0;margin:14px 0}.pillrow{display:flex;gap:7px;flex-wrap:wrap}.pill{padding:7px 10px;border-radius:9px;background:#f0f0f4;font-size:12px}.hidden{display:none!important}.speed{font-size:48px;font-weight:800;letter-spacing:-2px;font-variant-numeric:tabular-nums}.speedunit{font-size:14px;color:var(--sub);font-weight:600;letter-spacing:0}.progress{height:6px;border-radius:9px;background:#e5e5ea;overflow:hidden;margin-top:10px}.progress>div{height:100%;background:var(--blue);width:0%;transition:width .25s}
+footer{text-align:center;color:var(--sub);font-size:11px;padding:8px 12px 20px}
+@media(min-width:620px){main{padding:20px}#map{height:440px}.tabs{left:50%;right:auto;transform:translateX(-50%);width:min(100%,760px);border:1px solid #dddde2;border-bottom:0;border-radius:16px 16px 0 0}.desktop-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:12px}.desktop-grid .card{margin-bottom:0}}
+</style>
+</head>
+<body>
+<header>
+  <div class="topline">
+    <div class="brand">Train<span>Nav</span></div>
+    <div class="status"><i id="gpsDot" class="dot"></i><span id="gpsStatus">GPS未開始</span></div>
+  </div>
+</header>
+<main>
+  <section id="panel-drive" class="panel active">
+    <div class="banner" id="eventBanner"><div class="big" id="bannerTitle">案内</div><div class="small" id="bannerText"></div></div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:start">
+        <div><div class="sub">運転支援</div><h1 id="driveRouteName">ルート未設定</h1><div class="sub" id="driveRouteInfo">ルートを作成して運転を開始してください</div></div>
+        <span class="badge" id="runBadge">待機中</span>
+      </div>
+      <div class="divider"></div>
+      <div class="three">
+        <div class="kpi"><div class="value" id="distanceValue">—</div><div class="label">次のポイントまで</div></div>
+        <div class="kpi"><div class="value" id="gpsAccuracy">—</div><div class="label">GPS精度（m）</div></div>
+        <div class="kpi"><div class="value"><span id="speedValue">—</span></div><div class="label">GPS速度 km/h</div></div>
+      </div>
+      <div class="progress"><div id="routeProgress"></div></div>
+      <div class="row" style="margin-top:14px">
+        <button class="primary grow" id="startGps">GPSを開始</button>
+        <button id="stopGps" disabled>停止</button>
+      </div>
+      <p class="sub" style="margin:10px 0 0">GPS速度は端末の推定値やで。位置情報の誤差により、ポイントの検知が前後することがあります。</p>
+    </div>
+    <div class="card">
+      <h2>地図・現在地</h2>
+      <div class="map-wrap"><div id="map"></div><div class="map-actions"><button id="locateBtn">現在地へ</button><button id="fitRouteBtn">ルート全体</button></div></div>
+      <div class="sub" style="margin-top:10px">地図をタップすると、ポイント編集画面で使う地点を選べます。</div>
+    </div>
+    <div class="card">
+      <h2>次の案内</h2>
+      <div id="nextPointBox" class="empty">ルートとポイントを設定すると、ここに次の案内が表示されます。</div>
+    </div>
+  </section>
+
+  <section id="panel-route" class="panel">
+    <div class="card">
+      <h1>ルート設定</h1><p class="sub">駅名を検索して順番に追加すると、駅間を結ぶルートを作成できるで。</p>
+      <div class="field"><label for="routeName">ルート名</label><input id="routeName" placeholder="例：姫路 → 加古川" maxlength="80"></div>
+      <div class="divider"></div>
+      <div class="field"><label for="stationSearch">駅名・場所を検索</label><input id="stationSearch" placeholder="例：姫路駅" autocomplete="off"></div>
+      <div class="row" style="margin-top:8px"><button class="primary grow" id="searchStation">検索</button><button id="clearSearch">クリア</button></div>
+      <div class="sub" style="margin-top:8px">検索にはOpenStreetMapの公開検索サービスを使います。連続検索は少し待ってから実行してください。</div>
+      <div id="searchResults" class="list" style="margin-top:12px"></div>
+      <div class="divider"></div>
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">経由駅</h2><span class="badge" id="stationCount">0駅</span></div>
+      <div id="stationList" class="list" style="margin-top:10px"></div>
+      <div class="row" style="margin-top:12px"><button class="primary grow" id="buildRoute">駅間ルートを作成</button><button id="clearStations" class="danger">全削除</button></div>
+      <div class="notice warn" style="margin-top:12px">駅名の直線を結ぶ簡易ルートです。実際の線路形状に自動追従するものではありません。地図上で線路に沿って点を追加・調整する機能は今後の拡張対象です。</div>
+    </div>
+    <div class="card">
+      <h2>ルートの状態</h2><div id="routeStatus" class="sub">ルートはまだ作成されていません。</div>
+      <div class="row" style="margin-top:12px"><button id="saveNow" class="grow">設定を保存</button><button id="deleteRoute" class="danger">ルート削除</button></div>
+    </div>
+  </section>
+
+  <section id="panel-points" class="panel">
+    <div class="card">
+      <h1>ポイント設定</h1><p class="sub">ルート上の地点と、接近時に実行する案内を設定するで。</p>
+      <div class="field"><label for="pointName">ポイント名</label><input id="pointName" placeholder="例：次は加古川"></div>
+      <div class="two">
+        <div class="field"><label for="pointLat">緯度</label><input id="pointLat" inputmode="decimal" placeholder="34.000000"></div>
+        <div class="field"><label for="pointLon">経度</label><input id="pointLon" inputmode="decimal" placeholder="134.000000"></div>
+      </div>
+      <div class="row" style="margin-top:8px"><button id="useMapPoint" class="grow">地図で選んだ地点を使用</button><button id="useGpsPoint">現在地を使用</button></div>
+      <div class="divider"></div>
+      <div class="field"><label for="triggerDistance">何m手前で動作するか</label><input id="triggerDistance" type="number" min="0" max="10000" step="10" value="300"></div>
+      <div class="field"><label for="pointMessage">画面に表示するテロップ</label><input id="pointMessage" placeholder="まもなく加古川です"></div>
+      <div class="field"><label for="voiceText">音声読み上げ内容</label><input id="voiceText" placeholder="まもなく、加古川です"></div>
+      <div class="two">
+        <div class="field"><label for="pointImage">画像ファイル</label><input id="pointImage" type="file" accept="image/*"></div>
+        <div class="field"><label for="pointAudio">音声ファイル</label><input id="pointAudio" type="file" accept="audio/*"></div>
+      </div>
+      <div class="sub">画像・音声ファイルはブラウザ内に保存します。大きなファイルは保存容量を圧迫することがあります。</div>
+      <div class="row" style="margin-top:14px"><button class="primary grow" id="addPoint">ポイントを追加</button><button id="resetPoint">入力クリア</button></div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">登録済みポイント</h2><span class="badge" id="pointCount">0件</span></div>
+      <div id="pointList" class="list" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <section id="panel-settings" class="panel">
+    <div class="card">
+      <h1>設定</h1><p class="sub">案内の動作や表示を調整できます。</p>
+      <div class="field"><label for="announceMode">接近時の動作</label><select id="announceMode"><option value="once">ポイントごとに1回だけ</option><option value="repeat">接近中は再通知（30秒間隔）</option></select></div>
+      <div class="field"><label for="voiceRate">音声読み上げ速度</label><input id="voiceRate" class="range" type="range" min="0.7" max="1.3" step="0.1" value="1"><div class="sub"><span id="voiceRateLabel">1.0</span> 倍</div></div>
+      <div class="field"><label for="bannerDuration">テロップ表示時間</label><select id="bannerDuration"><option value="5">5秒</option><option value="10" selected>10秒</option><option value="20">20秒</option><option value="0">手動で閉じるまで</option></select></div>
+      <div class="row" style="margin-top:12px"><button id="testVoice" class="primary grow">音声テスト</button><button id="testBanner">通知テスト</button></div>
+      <div class="divider"></div>
+      <h2>保存データ</h2><div class="sub">設定はこのブラウザのローカル保存領域に保存されます。同じ端末・ブラウザで利用してください。</div>
+      <div class="row" style="margin-top:12px"><button id="saveSettings" class="grow">設定を保存</button><button id="clearData" class="danger">全データ削除</button></div>
+      <div class="notice warn" style="margin-top:12px">GPSを使うにはHTTPSまたはlocalhostが必要です。iPhoneではSafariでページを開き、位置情報の許可と音声再生の操作を行ってください。</div>
+    </div>
+    <div class="card">
+      <h2>利用上の注意</h2>
+      <ul class="sub" style="padding-left:18px;line-height:1.7;margin-bottom:0">
+        <li>本アプリは個人用の案内・シミュレーション用です。</li>
+        <li>GPSの誤差や地図・ルートの不正確さがあります。</li>
+        <li>実際の列車運転、保安装置、運転判断には使用しないでください。</li>
+        <li>地図タイルと駅検索は外部サービスへ通信します。</li>
+      </ul>
+    </div>
+  </section>
+  <footer>TrainNav Prototype · OpenStreetMap / Leaflet</footer>
+</main>
+<nav class="tabs" aria-label="メインメニュー">
+  <button class="tab active" data-tab="drive"><span class="ico">⌖</span>運転</button>
+  <button class="tab" data-tab="route"><span class="ico">⌁</span>ルート</button>
+  <button class="tab" data-tab="points"><span class="ico">◎</span>ポイント</button>
+  <button class="tab" data-tab="settings"><span class="ico">⚙</span>設定</button>
+</nav>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const DB_KEY = 'trainnav.mobile.v1';
+const state = {
+  routeName:'', stations:[], route:[], points:[], gps:null, watchId:null,
+  selectedMapPoint:null, fired:{}, lastRepeat:{}, lastSearch:0, routeLine:null,
+  userMarker:null, pointMarkers:[], map:null, db:null
+};
+const settings = {announceMode:'once',voiceRate:1,bannerDuration:10};
+const safeNum = v => Number.isFinite(Number(v)) ? Number(v) : null;
+const fmtDist = m => m == null || !Number.isFinite(m) ? '—' : m >= 1000 ? (m/1000).toFixed(2)+' km' : Math.round(m)+' m';
+const escapeHTML = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function id(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36)}
+function setStatus(text,live=false){$('gpsStatus').textContent=text;$('gpsDot').classList.toggle('live',live)}
+function notify(title,message,force=false){
+  $('bannerTitle').textContent=title;$('bannerText').textContent=message||'';$('eventBanner').classList.add('show');
+  const duration=Number(settings.bannerDuration);
+  if(duration>0){clearTimeout(notify.timer);notify.timer=setTimeout(()=>$('eventBanner').classList.remove('show'),duration*1000)}
+  if(force && navigator.vibrate) navigator.vibrate([120,60,120]);
+}
+function speak(text){
+  if(!text || !('speechSynthesis' in window)) return;
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='ja-JP';u.rate=Number(settings.voiceRate)||1;speechSynthesis.speak(u)}catch(e){console.warn(e)}
+}
+function haversine(a,b){
+  const R=6371000,rad=x=>x*Math.PI/180, dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon);
+  const x=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(Math.min(1,x)));
+}
+function projectPoint(p,a,b){
+  const latScale=111320,lonScale=111320*Math.cos(p.lat*Math.PI/180);
+  const ax=a.lon*lonScale,ay=a.lat*latScale,bx=b.lon*lonScale,by=b.lat*latScale,px=p.lon*lonScale,py=p.lat*latScale;
+  const dx=bx-ax,dy=by-ay,den=dx*dx+dy*dy;
+  const t=den?Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/den)):0;
+  const q={lat:(ay+t*dy)/latScale,lon:(ax+t*dx)/lonScale};
+  return {point:q,t,distance:haversine(p,q)};
+}
+function routeMetrics(pos){
+  if(state.route.length<2)return null;
+  let total=0,best={distance:Infinity,along:0,segment:0};
+  const lens=[];
+  for(let i=1;i<state.route.length;i++){const d=haversine(state.route[i-1],state.route[i]);lens.push(d);total+=d}
+  let prior=0;
+  for(let i=1;i<state.route.length;i++){
+    const pr=projectPoint(pos,state.route[i-1],state.route[i]);
+    const along=prior+lens[i-1]*pr.t;
+    if(pr.distance<best.distance)best={distance:pr.distance,along,segment:i-1,projected:pr.point};
+    prior+=lens[i-1];
+  }
+  return {...best,total};
+}
+function routeDistanceTo(point,metrics){
+  if(!metrics || !state.route.length)return haversine(state.gps,point);
+  let nearest={distance:Infinity,along:0};
+  let prior=0;
+  for(let i=1;i<state.route.length;i++){
+    const d=haversine(state.route[i-1],state.route[i]);
+    const pr=projectPoint(point,state.route[i-1],state.route[i]);
+    const along=prior+d*pr.t;
+    if(pr.distance<nearest.distance)nearest={distance:pr.distance,along};
+    prior+=d;
+  }
+  return nearest.along-metrics.along;
+}
+function getPointRemaining(point){
+  if(!state.gps)return null;
+  const m=routeMetrics(state.gps);
+  if(m && m.distance<1000)return routeDistanceTo(point,m);
+  return haversine(state.gps,point);
+}
+function persist(){
+  const data={routeName:state.routeName,stations:state.stations,route:state.route,points:state.points,settings};
+  try{localStorage.setItem(DB_KEY,JSON.stringify(data));return true}catch(e){alert('保存できませんでした。画像・音声ファイルが大きすぎる可能性があります。');return false}
+}
+function load(){
+  try{
+    const d=JSON.parse(localStorage.getItem(DB_KEY)||'null');if(!d)return;
+    state.routeName=d.routeName||'';state.stations=Array.isArray(d.stations)?d.stations:[];
+    state.route=Array.isArray(d.route)?d.route:[];state.points=Array.isArray(d.points)?d.points:[];
+    Object.assign(settings,d.settings||{});
+  }catch(e){console.warn('保存データを読み込めません',e)}
+}
+function initMap(){
+  if(!window.L){$('map').innerHTML='<div class="notice error">地図ライブラリを読み込めません。インターネット接続を確認してください。</div>';return}
+  state.map=L.map('map',{zoomControl:false}).setView([34.815,134.685],11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(state.map);
+  L.control.zoom({position:'bottomleft'}).addTo(state.map);
+  state.map.on('click',e=>{
+    state.selectedMapPoint={lat:e.latlng.lat,lon:e.latlng.lng};
+    $('pointLat').value=e.latlng.lat.toFixed(6);$('pointLon').value=e.latlng.lng.toFixed(6);
+    notify('地点を選択',`${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`);
+  });
+  redrawMap();
+}
+function redrawMap(){
+  if(!state.map)return;
+  if(state.routeLine){state.map.removeLayer(state.routeLine);state.routeLine=null}
+  if(state.route.length>1)state.routeLine=L.polyline(state.route.map(p=>[p.lat,p.lon]),{color:'#007aff',weight:5,opacity:.9}).addTo(state.map);
+  state.pointMarkers.forEach(m=>state.map.removeLayer(m));state.pointMarkers=[];
+  state.points.forEach((p,i)=>{
+    const marker=L.marker([p.lat,p.lon]).addTo(state.map).bindPopup(`<b>${escapeHTML(p.name||'ポイント')}</b><br>${escapeHTML(fmtDist(p.triggerDistance))}手前で動作`);
+    state.pointMarkers.push(marker);
+  });
+  if(state.gps){
+    if(!state.userMarker)state.userMarker=L.circleMarker([state.gps.lat,state.gps.lon],{radius:8,color:'#fff',weight:3,fillColor:'#007aff',fillOpacity:1}).addTo(state.map);
+    else state.userMarker.setLatLng([state.gps.lat,state.gps.lon]);
+  }
+}
+function updateRouteUI(){
+  $('routeName').value=state.routeName;$('driveRouteName').textContent=state.routeName||'ルート未設定';
+  $('driveRouteInfo').textContent=state.stations.length?state.stations.map(s=>s.name).join(' → '):'ルートを作成して運転を開始してください';
+  $('stationCount').textContent=state.stations.length+'駅';
+  $('stationList').innerHTML=state.stations.length?state.stations.map((s,i)=>`<div class="item"><span class="badge">${i+1}</span><div class="itembody"><strong>${escapeHTML(s.name)}</strong><small>${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}</small></div><button data-up="${i}" ${i===0?'disabled':''}>↑</button><button data-down="${i}" ${i===state.stations.length-1?'disabled':''}>↓</button><button class="danger" data-station-remove="${i}">削除</button></div>`).join(''):'<div class="empty">駅を検索して追加してください。</div>';
+  $('routeStatus').textContent=state.route.length>1?`ルート点 ${state.route.length}点・概算距離 ${fmtDist(routeLength())}`:'ルートはまだ作成されていません。';
+  $('stationList').querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>moveStation(+b.dataset.up,-1));
+  $('stationList').querySelectorAll('[data-down]').forEach(b=>b.onclick=()=>moveStation(+b.dataset.down,1));
+  $('stationList').querySelectorAll('[data-station-remove]').forEach(b=>b.onclick=()=>{state.stations.splice(+b.dataset.stationRemove,1);updateRouteUI();persist()});
+}
+function routeLength(){let n=0;for(let i=1;i<state.route.length;i++)n+=haversine(state.route[i-1],state.route[i]);return n}
+function moveStation(i,d){const j=i+d;if(j<0||j>=state.stations.length)return;[state.stations[i],state.stations[j]]=[state.stations[j],state.stations[i]];updateRouteUI();persist()}
+function updatePointUI(){
+  $('pointCount').textContent=state.points.length+'件';
+  $('pointList').innerHTML=state.points.length?state.points.map((p,i)=>`<div class="item"><span class="badge">${i+1}</span><div class="itembody"><strong>${escapeHTML(p.name||'ポイント')}</strong><small>${escapeHTML(fmtDist(p.triggerDistance))}手前 · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</small><small>${escapeHTML(p.message||'表示メッセージなし')}</small></div><button data-edit-point="${i}">編集</button><button class="danger" data-remove-point="${i}">削除</button></div>`).join(''):'<div class="empty">まだポイントがありません。</div>';
+  $('pointList').querySelectorAll('[data-remove-point]').forEach(b=>b.onclick=()=>{state.points.splice(+b.dataset.removePoint,1);updatePointUI();redrawMap();persist()});
+  $('pointList').querySelectorAll('[data-edit-point]').forEach(b=>b.onclick=()=>editPoint(+b.dataset.editPoint));
+  $('nextPointBox').innerHTML=state.points.length?'<div class="sub">ポイント '+state.points.length+'件登録済み。GPSを開始すると、次のポイントまでの距離を表示します。</div>':'<div class="empty">ポイントを追加してください。</div>';
+}
+function editPoint(i){
+  const p=state.points[i];$('pointName').value=p.name||'';$('pointLat').value=p.lat;$('pointLon').value=p.lon;
+  $('triggerDistance').value=p.triggerDistance??300;$('pointMessage').value=p.message||'';$('voiceText').value=p.voiceText||'';
+  state.editingPoint=i;switchTab('points');$('addPoint').textContent='ポイントを更新';
+}
+function resetPointForm(){
+  state.editingPoint=null;['pointName','pointLat','pointLon','pointMessage','voiceText'].forEach(id=>$ (id).value='');
+  $('triggerDistance').value=300;$('pointImage').value='';$('pointAudio').value='';$('addPoint').textContent='ポイントを追加';
+}
+function fileToData(file){return new Promise((resolve,reject)=>{if(!file){resolve(null);return}const r=new FileReader();r.onload=()=>resolve({name:file.name,type:file.type,data:r.result});r.onerror=reject;r.readAsDataURL(file)})}
+function switchTab(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+name));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  if(name==='drive'&&state.map)setTimeout(()=>state.map.invalidateSize(),100);
+  if(name==='points'&&state.map)setTimeout(()=>state.map.invalidateSize(),100);
+}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+async function searchStations(){
+  const q=$('stationSearch').value.trim();if(!q)return;
+  const now=Date.now();if(now-state.lastSearch<1100){$('searchResults').innerHTML='<div class="notice warn">検索の間隔を少し空けてください。</div>';return}
+  state.lastSearch=now;$('searchResults').innerHTML='<div class="empty">検索中…</div>';
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&accept-language=ja&q='+encodeURIComponent(q);
+    const res=await fetch(url,{headers:{'Accept':'application/json'}});if(!res.ok)throw new Error('検索サービスからエラーが返されました');
+    const results=await res.json();
+    $('searchResults').innerHTML=results.length?results.map((r,i)=>`<div class="item"><div class="itembody"><strong>${escapeHTML(r.name||r.display_name.split(',')[0])}</strong><small>${escapeHTML(r.display_name)}</small></div><button class="primary" data-add-station="${i}">追加</button></div>`).join(''):'<div class="empty">候補が見つかりません。駅名に市区町村を加えて検索してください。</div>';
+    $('searchResults').querySelectorAll('[data-add-station]').forEach(b=>b.onclick=()=>{
+      const r=results[+b.dataset.addStation],name=r.name||r.display_name.split(',')[0];
+      if(state.stations.some(s=>Math.abs(s.lat+Number(r.lat))<1e-6&&Math.abs(s.lon+Number(r.lon))<1e-6)){return}
+      state.stations.push({name,lat:Number(r.lat),lon:Number(r.lon),displayName:r.display_name});
+      if(!state.routeName)state.routeName=state.stations.length===1?name:state.stations[0].name+' → '+name;
+      updateRouteUI();persist();$('searchResults').innerHTML='<div class="notice">駅を追加しました。</div>';
+    });
+  }catch(e){$('searchResults').innerHTML=`<div class="notice error">${escapeHTML(e.message)}。ネット接続を確認してください。</div>`}
+}
+async function buildRoute(){
+  state.routeName=$('routeName').value.trim()||state.stations.map(s=>s.name).join(' → ');
+  if(state.stations.length<2){alert('ルート作成には駅を2つ以上追加してください。');return}
+  // Straight segments between stations; intentionally no claim of track snapping.
+  state.route=state.stations.map(s=>({lat:s.lat,lon:s.lon,name:s.name}));
+  state.fired={};redrawMap();updateRouteUI();persist();
+  if(state.map)state.map.fitBounds(state.route.map(p=>[p.lat,p.lon]),{padding:[24,24]});
+  notify('ルートを作成しました',`駅間を直線で結びました。概算距離 ${fmtDist(routeLength())}`);
+}
+function updateDrive(){
+  if(!state.gps)return;
+  const m=routeMetrics(state.gps);
+  $('gpsAccuracy').textContent=state.gps.accuracy==null?'—':Math.round(state.gps.accuracy);
+  $('speedValue').textContent=state.gps.speed==null?'—':Math.round(state.gps.speed*3.6);
+  if(m){
+    $('routeProgress').style.width=Math.max(0,Math.min(100,m.along/Math.max(1,m.total)*100))+'%';
+  }
+  const active=state.points.map((p,i)=>({p,i,remaining:getPointRemaining(p)})).filter(x=>x.remaining!==null&&x.remaining>=-Math.max(100,x.p.triggerDistance*0.5)).sort((a,b)=>a.remaining-b.remaining);
+  const next=active.find(x=>!state.fired[x.p.id])||active[0];
+  $('distanceValue').textContent=next?fmtDist(Math.max(0,next.remaining-next.p.triggerDistance)):'—';
+  $('nextPointBox').innerHTML=next?`<div class="row" style="justify-content:space-between"><div><strong>${escapeHTML(next.p.name||'ポイント')}</strong><div class="sub">${escapeHTML(next.p.message||'案内メッセージなし')}</div></div><span class="badge">${fmtDist(next.remaining)}先</span></div>`:'<div class="empty">次のポイントはありません。</div>';
+  state.points.forEach(p=>{
+    const remaining=getPointRemaining(p);
+    if(remaining===null)return;
+    const threshold=Number(p.triggerDistance)||0;
+    const near=remaining<=threshold&&remaining>=-Math.max(80,threshold*.25);
+    if(near){
+      const last=state.lastRepeat[p.id]||0;
+      const shouldFire=!state.fired[p.id]||(settings.announceMode==='repeat'&&Date.now()-last>30000);
+      if(shouldFire){
+        state.fired[p.id]=true;state.lastRepeat[p.id]=Date.now();
+        notify(p.name||'ポイント案内',p.message||'登録地点に接近しています',true);
+        speak(p.voiceText||p.message||p.name);
+        playPointAudio(p);
+        if(p.image?.data)showImage(p);
+      }
+    }
+  });
+}
+function playPointAudio(p){
+  if(!p.audio?.data)return;
+  try{const a=new Audio(p.audio.data);a.play().catch(()=>notify('音声を再生できません','画面をタップしてから再試行してください'))}catch(e){console.warn(e)}
+}
+function showImage(p){
+  let modal=$('imageModal');if(!modal){modal=document.createElement('div');modal.id='imageModal';modal.style.cssText='position:fixed;inset:0;z-index:2000;background:#000d;display:flex;align-items:center;justify-content:center;padding:20px';modal.innerHTML='<div style="background:white;border-radius:16px;padding:12px;max-width:100%;max-height:90%;text-align:center"><img id="modalImg" style="max-width:100%;max-height:70vh;object-fit:contain"><div id="modalCaption" style="padding:10px;font-weight:700"></div><button id="closeModal" class="primary" style="width:100%">閉じる</button></div>';document.body.appendChild(modal);$('closeModal').onclick=()=>modal.remove()}
+  $('modalImg').src=p.image.data;$('modalCaption').textContent=p.name||'案内画像';
+}
+function startGPS(){
+  if(!navigator.geolocation){alert('このブラウザは位置情報に対応していません。');return}
+  if(!window.isSecureContext){alert('位置情報を使うにはHTTPSまたはlocalhostで開いてください。');return}
+  if(state.watchId!==null)return;
+  setStatus('GPS取得中…',false);$('startGps').disabled=true;$('stopGps').disabled=false;$('runBadge').textContent='GPS取得中';
+  state.watchId=navigator.geolocation.watchPosition(pos=>{
+    const c=pos.coords;state.gps={lat:c.latitude,lon:c.longitude,accuracy:c.accuracy,speed:c.speed,timestamp:pos.timestamp};
+    setStatus('GPS接続中',true);$('runBadge').textContent='案内監視中';
+    redrawMap();updateDrive();
+  },err=>{
+    setStatus('GPSエラー',false);$('runBadge').textContent='GPSエラー';
+    const msgs={1:'位置情報の許可がありません。ブラウザの設定を確認してください。',2:'現在地を取得できません。',3:'位置情報の取得がタイムアウトしました。'};
+    notify('GPSを取得できません',msgs[err.code]||err.message);
+    stopGPS();
+  },{enableHighAccuracy:true,maximumAge:1000,timeout:15000});
+}
+function stopGPS(){
+  if(state.watchId!==null)navigator.geolocation.clearWatch(state.watchId);
+  state.watchId=null;$('startGps').disabled=false;$('stopGps').disabled=true;
+  setStatus('GPS停止中',false);$('runBadge').textContent='待機中';
+}
+$('startGps').onclick=startGPS;$('stopGps').onclick=stopGPS;
+$('locateBtn').onclick=()=>{if(state.gps&&state.map)state.map.setView([state.gps.lat,state.gps.lon],16);else notify('現在地未取得','先にGPSを開始してください')};
+$('fitRouteBtn').onclick=()=>{if(state.map&&state.route.length)state.map.fitBounds(state.route.map(p=>[p.lat,p.lon]),{padding:[24,24]});else notify('ルート未設定','先にルートを作成してください')};
+$('searchStation').onclick=searchStations;$('stationSearch').addEventListener('keydown',e=>{if(e.key==='Enter')searchStations()});
+$('clearSearch').onclick=()=>{$('stationSearch').value='';$('searchResults').innerHTML=''};
+$('buildRoute').onclick=buildRoute;$('clearStations').onclick=()=>{if(confirm('経由駅をすべて削除しますか？')){state.stations=[];state.route=[];state.routeName='';updateRouteUI();redrawMap();persist()}};
+$('routeName').addEventListener('change',()=>{state.routeName=$('routeName').value.trim();updateRouteUI();persist()});
+$('saveNow').onclick=()=>{persist();notify('保存しました','ルートとポイントをブラウザに保存しました')};
+$('deleteRoute').onclick=()=>{if(confirm('ルートを削除しますか？（ポイントは残ります）')){state.route=[];state.stations=[];state.routeName='';state.fired={};updateRouteUI();redrawMap();persist()}};
+$('useMapPoint').onclick=()=>{if(!state.selectedMapPoint){alert('先に地図をタップして地点を選択してください。');return} $('pointLat').value=state.selectedMapPoint.lat.toFixed(6);$('pointLon').value=state.selectedMapPoint.lon.toFixed(6)};
+$('useGpsPoint').onclick=()=>{if(!state.gps){alert('先にGPSを開始してください。');return}$('pointLat').value=state.gps.lat.toFixed(6);$('pointLon').value=state.gps.lon.toFixed(6)};
+$('addPoint').onclick=async()=>{
+  const lat=safeNum($('pointLat').value),lon=safeNum($('pointLon').value),dist=safeNum($('triggerDistance').value);
+  if(lat===null||lon===null||lat < -90||lat>90||lon < -180||lon>180){alert('緯度・経度を正しく入力してください。');return}
+  if(dist===null||dist<0||dist>10000){alert('動作距離は0〜10000mで入力してください。');return}
+  const old=state.editingPoint==null?null:state.points[state.editingPoint];
+  let image=null,audio=null;
+  try{image=$('pointImage').files[0]?await fileToData($('pointImage').files[0]):old?.image||null;audio=$('pointAudio').files[0]?await fileToData($('pointAudio').files[0]):old?.audio||null}catch(e){alert('ファイルを読み込めませんでした。');return}
+  const p={id:old?.id||id(),name:$('pointName').value.trim()||'案内ポイント',lat,lon,triggerDistance:dist,message:$('pointMessage').value.trim(),voiceText:$('voiceText').value.trim(),image,audio};
+  if(state.editingPoint==null)state.points.push(p);else state.points[state.editingPoint]=p;
+  state.fired[p.id]=false;updatePointUI();redrawMap();persist();resetPointForm();notify('ポイントを保存しました',p.name);
+};
+$('resetPoint').onclick=resetPointForm;
+$('voiceRate').oninput=()=>{$('voiceRateLabel').textContent=Number($('voiceRate').value).toFixed(1);settings.voiceRate=Number($('voiceRate').value)};
+$('announceMode').onchange=()=>settings.announceMode=$('announceMode').value;
+$('bannerDuration').onchange=()=>settings.bannerDuration=Number($('bannerDuration').value);
+$('testVoice').onclick=()=>speak('音声案内のテストです。TrainNavを起動しています。');
+$('testBanner').onclick=()=>notify('通知テスト','テロップ表示は正常に動作しています',true);
+$('saveSettings').onclick=()=>{persist();notify('設定を保存しました','このブラウザに保存しました')};
+$('clearData').onclick=()=>{if(confirm('ルート、ポイント、設定をすべて削除しますか？')){stopGPS();localStorage.removeItem(DB_KEY);state.routeName='';state.stations=[];state.route=[];state.points=[];state.fired={};Object.keys(settings).forEach(k=>delete settings[k]);Object.assign(settings,{announceMode:'once',voiceRate:1,bannerDuration:10});updateRouteUI();updatePointUI();redrawMap();persist();notify('データを削除しました','')}}; 
+load();
+$('announceMode').value=settings.announceMode;$('voiceRate').value=settings.voiceRate;$('voiceRateLabel').textContent=Number(settings.voiceRate).toFixed(1);$('bannerDuration').value=String(settings.bannerDuration);
+updateRouteUI();updatePointUI();initMap();
+window.addEventListener('beforeunload',()=>{if(state.watchId!==null)navigator.geolocation.clearWatch(state.watchId)});
+})();
+</script>
+</body>
+</html>
